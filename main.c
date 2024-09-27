@@ -21,6 +21,10 @@ void computerMove(char playerField[SIZE][SIZE], char computerBattleField[SIZE][S
 int isShipDestroyed(char field[SIZE][SIZE], int x, int y);
 void markSurroundings(char field[SIZE][SIZE], int x, int y);
 
+void computerMoveHard(char playerField[SIZE][SIZE], char computerBattleField[SIZE][SIZE]);
+int chooseDifficulty();
+void printFieldsSideBySide(char playerField[SIZE][SIZE], char battleField[SIZE][SIZE]);
+
 
 
 // Главная функция
@@ -34,27 +38,29 @@ int main() {
     initializeField(playerBattleField);   // Поле игрока для ведения боя (то, что видит игрок)
     initializeField(computerBattleField); // Поле компьютера для ведения боя
 
+    // Выбор уровня сложности
+    int difficulty = chooseDifficulty();
+
     // Игрок и компьютер размещают корабли
     for (int i = 0; i < SHIP_TYPES; i++) {
         int ships_to_place = 5 - ship_sizes[i]; // Количество кораблей для каждого типа
         for (int j = 0; j < ships_to_place; j++) {
             while(!placeShip(pcField, ship_sizes[i])){} // Компьютер размещает корабли
+            while(!placeShip(playerField, ship_sizes[i])){} // Компьютер размещает корабли
             // Игрок размещает корабли
-            printField(playerField);
-            printf("\n\nРазместите корабль размером %d клеток\n", ship_sizes[i]);
-            PlayerPlaceShip(playerField, ship_sizes[i]);
+            // printField(playerField);
+            // printf("\n\nРазместите корабль размером %d клеток\n", ship_sizes[i]);
+            // PlayerPlaceShip(playerField, ship_sizes[i]);
         }
     }
-
-    printField(pcField);
 
     // Начало битвы
     while (hasShips(playerField) && hasShips(pcField)) {
         int x, y;
 
         // Ход игрока
-        printf("Ваше поле для атаки:\n");
-        printField(playerBattleField);
+        printf("Ваше поле и поле для атаки:\n");
+        printFieldsSideBySide(playerField, playerBattleField); // Выводим оба поля рядом
         
         while (1) { // Цикл для повторного ввода при некорректных координатах
             printf("Введите координаты атаки (формат: x y): ");
@@ -94,8 +100,12 @@ int main() {
             break;
         }
 
-        // Ход компьютера
-        computerMove(playerField, computerBattleField);
+        // Ход компьютера в зависимости от сложности
+        if (difficulty == 1) {
+            computerMove(playerField, computerBattleField); // Простой уровень
+        } else {
+            computerMoveHard(playerField, computerBattleField); // Сложный уровень
+        }
 
         // Проверяем, остались ли корабли у игрока
         if (!hasShips(playerField)) {
@@ -107,6 +117,156 @@ int main() {
     return 0;
 }
 
+
+// Вывод двух полей рядом
+void printFieldsSideBySide(char playerField[SIZE][SIZE], char battleField[SIZE][SIZE]) {
+    printf("Ваше поле:                 Поле для атаки:\n");
+    
+    // Вывод заголовков для обеих таблиц (нумерация сверху)
+    printf("   ");
+    for (int i = 0; i < SIZE; i++) {
+        printf("%d ", i); // Нумерация для поля игрока
+    }
+    printf("           ");
+    for (int i = 0; i < SIZE; i++) {
+        printf("%d ", i); // Нумерация для поля битвы
+    }
+    printf("\n");
+    
+    // Вывод двух полей построчно
+    for (int i = 0; i < SIZE; i++) {
+        // Слева поле игрока
+        printf("%d  ", i); // Нумерация строк для поля игрока
+        for (int j = 0; j < SIZE; j++) {
+            printf("%c ", playerField[i][j]);
+        }
+        
+        // Раздел между полями
+        printf("         ");
+        
+        // Справа поле для атаки (playerBattleField)
+        printf("%d  ", i); // Нумерация строк для поля битвы
+        for (int j = 0; j < SIZE; j++) {
+            printf("%c ", battleField[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+
+// Компьютерная логика для сложного уровня (добивание корабля)
+int lastHitX = -1, lastHitY = -1;  // Координаты последнего попадания
+int directionIndex = 0;            // Индекс текущего направления
+int directions[4] = {0, 1, 2, 3};  // Массив направлений (0 - вверх, 1 - вниз, 2 - влево, 3 - вправо)
+
+void shuffleDirections() {
+    // Перемешиваем направления случайным образом
+    for (int i = 0; i < 4; i++) {
+        int j = rand() % 4;
+        int temp = directions[i];
+        directions[i] = directions[j];
+        directions[j] = temp;
+    }
+}
+
+void computerMoveHard(char playerField[SIZE][SIZE], char computerBattleField[SIZE][SIZE]) {
+    int x, y;
+
+    // Если ранее было попадание, пытаемся добить корабль
+    if (lastHitX != -1 && lastHitY != -1) {
+        // Пробуем все 4 направления до тех пор, пока не найдем корабль или не проверим все варианты
+        while (directionIndex < 4) {
+            switch (directions[directionIndex]) {
+                case 0: x = lastHitX - 1; y = lastHitY; break;  // Вверх
+                case 1: x = lastHitX + 1; y = lastHitY; break;  // Вниз
+                case 2: x = lastHitX; y = lastHitY - 1; break;  // Влево
+                case 3: x = lastHitX; y = lastHitY + 1; break;  // Вправо
+            }
+
+            // Проверяем, что координаты внутри поля и в эту клетку еще не стреляли
+            if (x >= 0 && x < SIZE && y >= 0 && y < SIZE && computerBattleField[x][y] == '.') {
+                if (playerField[x][y] == 'S') {
+                    printf("Компьютер попал в ваш корабль!\n");
+                    computerBattleField[x][y] = 'X';  // Попадание
+                    playerField[x][y] = 'X';          // Пометить корабль уничтоженным
+                    lastHitX = x;  // Обновляем координаты последнего попадания
+                    lastHitY = y;
+                    directionIndex = 0;  // Сброс направления для поиска дальше
+
+                    // Проверка уничтожения корабля игрока
+                    if (isShipDestroyed(playerField, x, y)) {
+                        printf("Компьютер уничтожил ваш корабль!\n");
+                        markSurroundings(playerField, x, y);  // Отмечаем клетки вокруг корабля на поле игрока
+                        lastHitX = -1;  // Сбрасываем, так как корабль уничтожен
+                        lastHitY = -1;
+                    }
+                } else {
+                    printf("Компьютер промахнулся.\n");
+                    computerBattleField[x][y] = '*';  // Промах
+                    directionIndex++;  // Пробуем следующее направление
+                }
+                return;  // Завершаем ход компьютера
+            } else {
+                directionIndex++;  // Если направление недоступно, пробуем следующее
+            }
+        }
+
+        // Если все направления проверены, но не нашли корабль — сбрасываем lastHitX и lastHitY
+        lastHitX = -1;
+        lastHitY = -1;
+        directionIndex = 0;
+    }
+
+    // Если нет предыдущего попадания, стреляем случайно
+    while (1) {
+        x = rand() % SIZE;
+        y = rand() % SIZE;
+
+        // Проверяем, что в эту клетку еще не стреляли
+        if (computerBattleField[x][y] == '.') {
+            if (playerField[x][y] == 'S') {
+                printf("Компьютер попал в ваш корабль!\n");
+                computerBattleField[x][y] = 'X';  // Попадание
+                playerField[x][y] = 'X';          // Пометить корабль уничтоженным
+                lastHitX = x;  // Сохраняем координаты для следующего хода
+                lastHitY = y;
+                shuffleDirections();  // Перемешиваем направления для следующего хода
+                directionIndex = 0;  // Начинаем с первого направления
+
+                // Проверка уничтожения корабля игрока
+                if (isShipDestroyed(playerField, x, y)) {
+                    printf("Компьютер уничтожил ваш корабль!\n");
+                    markSurroundings(playerField, x, y);  // Отмечаем клетки вокруг корабля на поле игрока
+                    lastHitX = -1;  // Сбрасываем, так как корабль уничтожен
+                    lastHitY = -1;
+                }
+            } else {
+                printf("Компьютер промахнулся.\n");
+                computerBattleField[x][y] = '*';  // Промах
+            }
+            break;
+        }
+    }
+}
+
+
+
+int chooseDifficulty() {
+    int difficulty;
+    printf("Выберите уровень сложности:\n");
+    printf("1. Простой (компьютер стреляет случайно)\n");
+    printf("2. Сложный (компьютер пытается добить корабль после попадания)\n");
+    while (1) {
+        printf("Введите 1 или 2: ");
+        scanf("%d", &difficulty);
+        if (difficulty == 1 || difficulty == 2) {
+            break;
+        } else {
+            printf("Некорректный ввод. Попробуйте снова.\n");
+        }
+    }
+    return difficulty;
+}
 
 
 int isShipDestroyed(char field[SIZE][SIZE], int x, int y) {
