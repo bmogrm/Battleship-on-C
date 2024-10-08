@@ -47,7 +47,7 @@ int main() {
         for (int j = 0; j < ships_to_place; j++) {
             while(!placeShip(pcField, ship_sizes[i])){} // Компьютер размещает корабли
             while(!placeShip(playerField, ship_sizes[i])){} // Компьютер размещает корабли
-            // Игрок размещает корабли
+            //Игрок размещает корабли
             // printField(playerField);
             // printf("\n\nРазместите корабль размером %d клеток\n", ship_sizes[i]);
             // PlayerPlaceShip(playerField, ship_sizes[i]);
@@ -57,13 +57,14 @@ int main() {
     // Начало битвы
     while (hasShips(playerField) && hasShips(pcField)) {
         int x, y;
-
+        //system("cls");
         // Ход игрока
         printf("Ваше поле и поле для атаки:\n");
         printFieldsSideBySide(playerField, playerBattleField); // Выводим оба поля рядом
+        printField(pcField);
         
         while (1) { // Цикл для повторного ввода при некорректных координатах
-            printf("Введите координаты атаки (формат: x y): ");
+            printf("Введите координаты атаки (формат: y x): ");
             scanf("%d %d", &x, &y);
 
             if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) {
@@ -127,7 +128,7 @@ void printFieldsSideBySide(char playerField[SIZE][SIZE], char battleField[SIZE][
     for (int i = 0; i < SIZE; i++) {
         printf("%d ", i); // Нумерация для поля игрока
     }
-    printf("           ");
+    printf("            ");
     for (int i = 0; i < SIZE; i++) {
         printf("%d ", i); // Нумерация для поля битвы
     }
@@ -191,7 +192,6 @@ void computerMoveHard(char playerField[SIZE][SIZE], char computerBattleField[SIZ
                     playerField[x][y] = 'X';          // Пометить корабль уничтоженным
                     lastHitX = x;  // Обновляем координаты последнего попадания
                     lastHitY = y;
-                    directionIndex = 0;  // Сброс направления для поиска дальше
 
                     // Проверка уничтожения корабля игрока
                     if (isShipDestroyed(playerField, x, y)) {
@@ -243,6 +243,7 @@ void computerMoveHard(char playerField[SIZE][SIZE], char computerBattleField[SIZ
             } else {
                 printf("Компьютер промахнулся.\n");
                 computerBattleField[x][y] = '*';  // Промах
+                playerField[x][y] = '*';
             }
             break;
         }
@@ -275,7 +276,7 @@ int isShipDestroyed(char field[SIZE][SIZE], int x, int y) {
     int i = x, j = y;
     
     // Проверка по горизонтали (вправо и влево)
-    while (j >= 0 && field[i][j] == 'X') j--; // Идем влево, пока корабль
+    while (j >= 0 && field[i][j] == 'X' || field[i][j] == 'S'){j--;} // Идем влево, пока корабль
     j++; // Возвращаемся к последнему 'X'
     while (j < SIZE && (field[i][j] == 'X' || field[i][j] == 'S')) {
         if (field[i][j] == 'S') return 0; // Если есть части корабля, которые не уничтожены
@@ -284,7 +285,7 @@ int isShipDestroyed(char field[SIZE][SIZE], int x, int y) {
     
     // Проверка по вертикали (вверх и вниз)
     i = x; j = y;
-    while (i >= 0 && field[i][j] == 'X') i--; // Идем вверх
+    while (i >= 0 && field[i][j] == 'X' || field[i][j] == 'S'){i--;} // Идем вверх
     i++;
     while (i < SIZE && (field[i][j] == 'X' || field[i][j] == 'S')) {
         if (field[i][j] == 'S') return 0; // Если есть не уничтоженные части
@@ -317,8 +318,8 @@ void markSurroundings(char field[SIZE][SIZE], int x, int y) {
     // Отмечаем все клетки вокруг корабля
     for (int i = startX - 1; i <= endX + 1; i++) {
         for (int j = startY - 1; j <= endY + 1; j++) {
-            if (i >= 0 && i < SIZE && j >= 0 && j < SIZE && field[i][j] == '.') {
-                field[i][j] = 'X'; // Помечаем как "мимо"
+            if (i >= 0 && i < SIZE && j >= 0 && j < SIZE) {
+                field[i][j] = 'X';
             }
         }
     }
@@ -351,9 +352,14 @@ void computerMove(char playerField[SIZE][SIZE], char computerBattleField[SIZE][S
                 printf("Компьютер попал в ваш корабль!\n");
                 computerBattleField[x][y] = 'X'; // Попадание
                 playerField[x][y] = 'X'; // Пометить корабль уничтоженным
+                if (isShipDestroyed(playerField, x, y)){
+                    printf("Комрьютер уничтожил корабль!\n");
+                    markSurroundings(playerField, x, y);
+                }
             } else {
                 printf("Компьютер промахнулся.\n");
                 computerBattleField[x][y] = '*'; // Промах
+                playerField[x][y] = '*';
             }
             break;
         }
@@ -408,8 +414,7 @@ void PlayerPlaceShip(char field[SIZE][SIZE], int shipSize) {
                 } else { // Вертикальное размещение
                     field[x + i][y] = 'S';
                 }
-            }
-            break; // Выход из цикла, если корабль размещен успешно
+            } break; // Выход из цикла, если корабль размещен успешно
         } else {
             printf("Ошибка: некорректное размещение корабля. Попробуйте снова.\n");
         }
